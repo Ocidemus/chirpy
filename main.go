@@ -1,11 +1,16 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
 
+	"database/sql"
+	"github.com/Ocidemus/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func endpoint(w http.ResponseWriter, r *http.Request){
@@ -37,6 +42,7 @@ func(cfg *apiConfig) reset(w http.ResponseWriter,r *http.Request){
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQ *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -47,6 +53,18 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func main(){
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")	
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("Error opening database: %s", err)
+	}
+	
+
+
 	const filepathRoot = "."
 	const port = "8080"
 	cfg := &apiConfig{}
@@ -56,7 +74,8 @@ func main(){
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
 	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app",http.FileServer(http.Dir(filepathRoot)))))
-
+	dbQueries := database.New(db)
+	cfg.dbQ = dbQueries
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
