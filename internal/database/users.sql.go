@@ -12,7 +12,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, email)
 VALUES (
-    gen_random_uuid(),TIMESTAMP.NOW(),TIMESTAMP.NOW(),$1
+    gen_random_uuid(),NOW(),NOW(),$1
 )
 RETURNING id, created_at, updated_at, email
 `
@@ -27,4 +27,13 @@ func (q *Queries) CreateUser(ctx context.Context, email string) (User, error) {
 		&i.Email,
 	)
 	return i, err
+}
+
+const reset = `-- name: Reset :exec
+DELETE FROM users
+`
+
+func (q *Queries) Reset(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, reset)
+	return err
 }
