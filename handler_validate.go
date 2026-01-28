@@ -59,6 +59,33 @@ func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (cfg *apiConfig) reqchirp(w http.ResponseWriter,r *http.Request){
+	type result struct{
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+	dbChirps, err := cfg.db.GetChirps(r.Context())
+	if err != nil{
+		respondWithError(w, http.StatusInternalServerError, "Couldn't find any chirps", err)
+		return
+	}
+	arr := []result{}
+	for _,chirp := range dbChirps{
+		arr = append(arr, result{
+			ID:chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body: chirp.Body,
+			UserID: chirp.UserID.UUID,
+		})
+	}
+	respondWithJSON(w, http.StatusOK, arr)
+
+}
+
 func cleanprofanity(text string) string {
 	words := strings.Fields(text)
 	for index,word := range words {

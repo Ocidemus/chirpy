@@ -24,40 +24,6 @@ func endpoint(w http.ResponseWriter, r *http.Request){
 
 }
 
-// func (cfg *apiConfig) create_user(w http.ResponseWriter,r *http.Request){
-// 	type body struct{
-// 		Email string `json:"email"`
-// 	}
-// 	type returnval struct {
-// 		ID uuid.UUID `json:"id"`
-// 		CreatedAt time.Time `json:"created_at"`
-// 		UpdatedAt time.Time `json:"updated_at"`
-// 		Email string `json:"email"`
-// 	}
-// 	decoder := json.NewDecoder(r.Body)
-// 	params := body{}
-// 	err := decoder.Decode(&params)
-// 	if err != nil {
-// 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
-// 		return
-// 	}
-
-// 	user, err := cfg.db.CreateUser(r.Context(), params.Email)
-// 	if err != nil{
-// 		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
-// 		return
-// 	}
-
-// 	respondWithJSON(w, http.StatusCreated, returnval{
-// 		ID:user.ID,
-// 		CreatedAt: user.CreatedAt,
-// 		UpdatedAt: user.UpdatedAt,
-// 		Email: user.Email,
-// 	})
-
-
-// }
-
 func(cfg *apiConfig) metrics(w http.ResponseWriter,r *http.Request){
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK) // 200
@@ -70,20 +36,6 @@ func(cfg *apiConfig) metrics(w http.ResponseWriter,r *http.Request){
 </html>`,hits)))
 }
 
-// func (cfg *apiConfig) reset(w http.ResponseWriter,r *http.Request){
-// 	if cfg.platform != "dev"{
-// 		respondWithError(w,http.StatusForbidden,"FORBIDDEN",nil)
-// 		return
-// 	}
-// 	err := cfg.db.Reset(r.Context())
-// 	if err != nil{
-// 		respondWithError(w, http.StatusInternalServerError, "Couldn't reset user", err)
-// 		return
-// 	}
-// 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-// 	w.WriteHeader(http.StatusOK) // 200
-	
-// }
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
@@ -124,9 +76,11 @@ func main(){
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", endpoint)
 	mux.HandleFunc("GET /admin/metrics", cfg.metrics)
+	mux.HandleFunc("GET /api/chirps",cfg.reqchirp)
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
 	mux.HandleFunc("POST /api/users", cfg.create_user)
 	mux.HandleFunc("POST /api/chirps", cfg.handlerChirps)
+
 	// mux.HandleFunc(("POST /api/chirp"))
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app",http.FileServer(http.Dir(filepathRoot)))))
 	dbQueries := database.New(dbconn)
