@@ -4,14 +4,23 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/Ocidemus/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
-func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
+		User_id string `json:"user_id"`
 	}
 	type returnVals struct {
-		CleanedBody string `json:"cleaned_body"`
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -27,9 +36,26 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
+	cleaned := cleanprofanity(params.Body)
+	parsedID, err := uuid.Parse(params.User_id)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "invalid user_id", err)
+		return
+	}
 
-	respondWithJSON(w, http.StatusOK, returnVals{
-		CleanedBody: cleanprofanity(params.Body),
+	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body: cleaned,
+		UserID: uuid.NullUUID{
+			UUID:  parsedID,
+			Valid: true,
+		},
+})
+	respondWithJSON(w, http.StatusCreated, returnVals{
+		ID:chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body: cleaned,
+		UserID: parsedID,
 	})
 }
 
