@@ -1,14 +1,19 @@
 package main
 
-import(
-	"github.com/google/uuid"
+import (
 	"encoding/json"
-	"time"
 	"net/http"
+	"time"
+
+	"github.com/Ocidemus/chirpy/internal/auth"
+	"github.com/Ocidemus/chirpy/internal/database"
+	"github.com/google/uuid"
+
 )
 
 func (cfg *apiConfig) create_user(w http.ResponseWriter,r *http.Request){
 	type body struct{
+		Password string `json:"password"`
 		Email string `json:"email"`
 	}
 	type returnval struct {
@@ -25,7 +30,16 @@ func (cfg *apiConfig) create_user(w http.ResponseWriter,r *http.Request){
 		return
 	}
 
-	user, err := cfg.db.CreateUser(r.Context(), params.Email)
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
+		return
+	}
+
+	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+	})
 	if err != nil{
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
 		return

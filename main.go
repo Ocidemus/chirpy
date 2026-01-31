@@ -80,6 +80,8 @@ func main(){
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
 	mux.HandleFunc("POST /api/users", cfg.create_user)
 	mux.HandleFunc("POST /api/chirps", cfg.handlerChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}",cfg.handlechirp )
+	mux.HandleFunc("POST /api/login",cfg.handle_login)
 
 	// mux.HandleFunc(("POST /api/chirp"))
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app",http.FileServer(http.Dir(filepathRoot)))))
