@@ -41,6 +41,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db *database.Queries
 	platform string
+	secret string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -60,6 +61,10 @@ func main(){
 	if platform == "" {
     	log.Fatal("PLATFORM must be set")
 	}
+	secret := os.Getenv("JWT_SECRET")
+	if secret == ""{
+		log.Fatal("Secret must be set")
+	}
 	dbconn, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %s", err)
@@ -71,6 +76,7 @@ func main(){
 	const port = "8080"
 	cfg := &apiConfig{
 	platform: platform,
+	secret: secret,
 }
 
 	mux := http.NewServeMux()

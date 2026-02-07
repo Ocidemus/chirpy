@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Ocidemus/chirpy/internal/auth"
 	"github.com/Ocidemus/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -41,7 +42,6 @@ func (cfg *apiConfig) handlechirp (w http.ResponseWriter, r *http.Request){
 func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
-		User_id string `json:"user_id"`
 	}
 	type returnVals struct {
 		ID        uuid.UUID `json:"id"`
@@ -59,22 +59,35 @@ func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "missing or malformed auth header", err)
+		return
+	}
+	valid_id,err:= auth.ValidateJWT(token,cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "no valid id found", err)
+		return
+	}
 	const maxChirpLength = 140
 	if len(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
 	cleaned := cleanprofanity(params.Body)
-	parsedID, err := uuid.Parse(params.User_id)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid user_id", err)
-		return
-	}
-
+	// parsedID, err := uuid.Parse(params.User_id)
+	// if err != nil {
+	// 	respondWithError(w, http.StatusBadRequest, "invalid user_id", err)
+	// 	return
+	// }
+    // if parsedID != valid_id {
+	// 	respondWithError(w, http.StatusUnauthorized, "no valid id found", err)
+	// 	return
+	// }
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body: cleaned,
 		UserID: uuid.NullUUID{
-			UUID:  parsedID,
+			UUID:  valid_id,
 			Valid: true,
 		},
 })
@@ -83,7 +96,7 @@ func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: chirp.CreatedAt,
 		UpdatedAt: chirp.UpdatedAt,
 		Body: cleaned,
-		UserID: parsedID,
+		UserID: chirp.UserID.UUID,
 	})
 }
 
