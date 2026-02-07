@@ -27,21 +27,23 @@ func CheckPasswordHash(password, hash string) (bool, error){
 	return check,nil
 }
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error){
+func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+	now := time.Now().UTC()
+
 	claims := jwt.RegisteredClaims{
-		
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn).UTC()),
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		ExpiresAt: jwt.NewNumericDate(now.Add(expiresIn)),
+		IssuedAt:  jwt.NewNumericDate(now),
 		Issuer:    "chirpy",
 		Subject:   userID.String(),
 	}
-	signingkey := []byte(tokenSecret)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,claims)
-	tokenString, err := token.SignedString(signingkey)
+
+	signingKey := []byte(tokenSecret)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(signingKey)
 	if err != nil {
-		return "",err
+		return "", err
 	}
-	return tokenString,nil
+	return tokenString, nil
 }
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error){
