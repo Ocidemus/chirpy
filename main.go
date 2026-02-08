@@ -90,8 +90,8 @@ func main(){
 	mux.HandleFunc("POST /api/login",cfg.handle_login)
 	mux.HandleFunc("POST /api/refresh",cfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke",cfg.handleRevoke)
-
-	// mux.HandleFunc(("POST /api/chirp"))
+	mux.HandleFunc("PUT /api/users",cfg.update_email)
+	// // mux.HandleFunc(("POST /api/chirp"))
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app",http.FileServer(http.Dir(filepathRoot)))))
 	dbQueries := database.New(dbconn)
 	cfg.db = dbQueries
