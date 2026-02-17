@@ -42,6 +42,7 @@ type apiConfig struct {
 	db *database.Queries
 	platform string
 	secret string
+	polka_key string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -69,6 +70,10 @@ func main(){
 	if err != nil {
 		log.Fatalf("Error opening database: %s", err)
 	}
+	polka_key := os.Getenv("POLKA_KEY")
+	if polka_key == ""{
+		log.Fatal("No polka key found")
+	}
 	
 
 
@@ -77,6 +82,7 @@ func main(){
 	cfg := &apiConfig{
 	platform: platform,
 	secret: secret,
+	polka_key: polka_key,
 }
 
 	mux := http.NewServeMux()
@@ -91,7 +97,8 @@ func main(){
 	mux.HandleFunc("POST /api/refresh",cfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke",cfg.handleRevoke)
 	mux.HandleFunc("PUT /api/users",cfg.update_email)
-	// // mux.HandleFunc(("POST /api/chirp"))
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.deletechirp)
+	mux.HandleFunc("POST /api/polka/webhooks",cfg.polka_hook)
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app",http.FileServer(http.Dir(filepathRoot)))))
 	dbQueries := database.New(dbconn)
 	cfg.db = dbQueries

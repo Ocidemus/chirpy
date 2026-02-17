@@ -21,6 +21,7 @@ func (cfg *apiConfig) create_user(w http.ResponseWriter,r *http.Request){
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email string `json:"email"`
+		IsChirpyRed bool      `json:"is_chirpy_red"`
 	}
 	decoder := json.NewDecoder(r.Body)
 	params := body{}
@@ -50,6 +51,7 @@ func (cfg *apiConfig) create_user(w http.ResponseWriter,r *http.Request){
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	})
 
 

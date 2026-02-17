@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"errors"
 
 	"github.com/Ocidemus/chirpy/internal/auth"
 	"github.com/Ocidemus/chirpy/internal/database"
@@ -17,6 +18,7 @@ func (cfg *apiConfig) handlechirp (w http.ResponseWriter, r *http.Request){
 		UpdatedAt time.Time `json:"updated_at"`
 		Body      string    `json:"body"`
 		UserID    uuid.UUID `json:"user_id"`
+		
 	}
 	chirpID := r.PathValue("chirpID")
 	parsedID, err := uuid.Parse(chirpID)
@@ -49,6 +51,7 @@ func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt time.Time `json:"updated_at"`
 		Body      string    `json:"body"`
 		UserID    uuid.UUID `json:"user_id"`
+		
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -142,4 +145,36 @@ func cleanprofanity(text string) string {
 	}
 }
 	return strings.Join(words, " ")
+}
+
+func (cfg *apiConfig) deletechirp(w http.ResponseWriter, r *http.Request){
+	token,err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w,http.StatusUnauthorized,"error finding token",err)
+	}
+	chirpID := r.PathValue("chirpID")
+	parsedID, err := uuid.Parse(chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "invalid user_id", err)
+		return
+	}
+	chirp, err := cfg.db.GetChirp(r.Context(),parsedID)
+	if err != nil{
+		respondWithError(w, http.StatusNotFound, "Couldn't find any chirps", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w,http.StatusUnauthorized,"cant find token",err)
+        return
+	}
+	if !chirp.UserID.Valid || chirp.UserID.UUID != userID {
+		respondWithError(w, http.StatusForbidden, "unauthorized", errors.New("not the author"))
+		return
+	}
+	err = cfg.db.DeleteChirp(r.Context(), parsedID)
+	if err != nil {
+		respondWithError(w,http.StatusInternalServerError,"chirp not found",err)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

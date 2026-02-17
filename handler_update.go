@@ -20,6 +20,7 @@ func (cfg *apiConfig) update_email(w http.ResponseWriter,r *http.Request){
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email string `json:"email"`
+		IsChirpyRed bool      `json:"is_chirpy_red"`
 	}
 	token, err := auth.GetBearerToken(r.Header)
     if err != nil || token == "" {
@@ -58,6 +59,7 @@ func (cfg *apiConfig) update_email(w http.ResponseWriter,r *http.Request){
 		CreatedAt: dbuser.CreatedAt,
 		UpdatedAt: dbuser.UpdatedAt,
 		Email: dbuser.Email,
+		IsChirpyRed: dbuser.IsChirpyRed,
 	})
 
 }
