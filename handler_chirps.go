@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
-	"errors"
 
 	"github.com/Ocidemus/chirpy/internal/auth"
 	"github.com/Ocidemus/chirpy/internal/database"
@@ -103,19 +105,58 @@ func (cfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (cfg *apiConfig) reqchirp(w http.ResponseWriter,r *http.Request){
-	type result struct{
+type result struct{
 		ID        uuid.UUID `json:"id"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Body      string    `json:"body"`
 		UserID    uuid.UUID `json:"user_id"`
 	}
+
+func (cfg *apiConfig) reqchirp(w http.ResponseWriter,r *http.Request){
+	
+	author_id := r.URL.Query().Get("author_id")
+	sortOrder := r.URL.Query().Get("sort")
+
+	if sortOrder != "desc" {
+		sortOrder = "asc"
+	}
+	if author_id != "" {
+		id, err := uuid.Parse(author_id)
+		if err != nil {
+			fmt.Println("Invalid UUID:", err)
+			return
+		}
+		dbChirps, err := cfg.db.GetChirpsByAuthor(r.Context(), uuid.NullUUID{
+		UUID:  id,
+		Valid: true,
+	})
+		if err != nil{
+			respondWithError(w, http.StatusInternalServerError, "Couldn't find any chirps", err)
+			return
+		}
+		
+		arr := []result{}
+		for _,chirp := range dbChirps{
+			arr = append(arr, result{
+				ID:chirp.ID,
+				CreatedAt: chirp.CreatedAt,
+				UpdatedAt: chirp.UpdatedAt,
+				Body: chirp.Body,
+				UserID: chirp.UserID.UUID,
+			})
+		}
+		sortChirps(arr, sortOrder) 
+		respondWithJSON(w, http.StatusOK, arr)
+		return
+
+	}
 	dbChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil{
 		respondWithError(w, http.StatusInternalServerError, "Couldn't find any chirps", err)
 		return
 	}
+	
 	arr := []result{}
 	for _,chirp := range dbChirps{
 		arr = append(arr, result{
@@ -126,6 +167,7 @@ func (cfg *apiConfig) reqchirp(w http.ResponseWriter,r *http.Request){
 			UserID: chirp.UserID.UUID,
 		})
 	}
+	sortChirps(arr, sortOrder) 
 	respondWithJSON(w, http.StatusOK, arr)
 
 }
@@ -177,4 +219,17 @@ func (cfg *apiConfig) deletechirp(w http.ResponseWriter, r *http.Request){
 		respondWithError(w,http.StatusInternalServerError,"chirp not found",err)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+
+func sortChirps(chirps []result, order string) {
+	if order == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
+	} else { // default asc
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
+	}
 }
